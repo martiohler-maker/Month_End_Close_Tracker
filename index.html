@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Month-End Close Tracker</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card-bg: #ffffff;
+    --text: #1c1e21;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --accent: #2563eb;
+    --accent-bg: #dbeafe;
+    --green: #16a34a;
+    --green-bg: #dcfce7;
+    --amber: #d97706;
+    --amber-bg: #fef3c7;
+    --red: #dc2626;
+    --red-bg: #fee2e2;
+    --track: #e5e7eb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181c;
+      --card-bg: #1f2227;
+      --text: #f0f1f3;
+      --muted: #9aa0a8;
+      --border: #33373f;
+      --accent: #5b8def;
+      --accent-bg: #1c2c4a;
+      --green: #4ade80;
+      --green-bg: #123821;
+      --amber: #fbbf24;
+      --amber-bg: #3a2f0d;
+      --red: #f87171;
+      --red-bg: #3a1414;
+      --track: #2b2f36;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 60px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+  }
+  .wrap {
+    width: 100%;
+    max-width: 640px;
+  }
+  header {
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin: 0 0 2px;
+  }
+  .period {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    margin: 16px 0 20px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .task-row {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .task-row:last-child { border-bottom: none; }
+  .task-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .task-name {
+    font-weight: 600;
+    font-size: 0.98rem;
+  }
+  .task-owner {
+    color: var(--muted);
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+  .status-group {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .status-btn {
+    flex: 1;
+    min-width: 90px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .status-btn[data-status="done"].active {
+    background: var(--green-bg);
+    border-color: var(--green);
+    color: var(--green);
+  }
+  .status-btn[data-status="in_progress"].active {
+    background: var(--amber-bg);
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+  .status-btn[data-status="blocked"].active {
+    background: var(--red-bg);
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .note-field {
+    margin-top: 8px;
+  }
+  .note-field input {
+    width: 100%;
+    padding: 7px 9px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.82rem;
+  }
+  .note-field label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  /* Status view */
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .stat-row .big {
+    font-size: 1.6rem;
+    font-weight: 700;
+  }
+  .progress-track {
+    height: 12px;
+    background: var(--track);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--green);
+    border-radius: 6px 0 0 6px;
+    transition: width 0.25s ease;
+  }
+  .chip-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .chip.done { background: var(--green-bg); color: var(--green); }
+  .chip.in_progress { background: var(--amber-bg); color: var(--amber); }
+  .chip.blocked { background: var(--red-bg); color: var(--red); }
+
+  .card h2 {
+    font-size: 0.95rem;
+    margin: 0 0 10px;
+  }
+  .block-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .block-item:last-child { border-bottom: none; }
+  .block-name { font-weight: 600; font-size: 0.9rem; }
+  .block-owner { color: var(--accent); font-size: 0.82rem; margin-top: 3px; }
+  .block-note { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+  .block-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+    height: fit-content;
+  }
+  .block-badge.in_progress { background: var(--amber-bg); color: var(--amber); }
+  .block-badge.blocked { background: var(--red-bg); color: var(--red); }
+  .empty-note {
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+
+  .signoff-banner {
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .signoff-banner.locked {
+    background: var(--red-bg);
+    border: 1px solid var(--red);
+  }
+  .signoff-banner.ready {
+    background: var(--green-bg);
+    border: 1px solid var(--green);
+  }
+  .signoff-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+  .signoff-title {
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .signoff-banner.locked .signoff-title { color: var(--red); }
+  .signoff-banner.ready .signoff-title { color: var(--green); }
+  .signoff-sub {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 18px;
+  }
+  .reset-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 0.78rem;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Month-End Close Tracker</h1>
+    <div class="period" id="periodLabel"></div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-view="checklist">Checklist</button>
+    <button class="tab-btn" data-view="status">Status</button>
+  </div>
+
+  <div id="checklistView"></div>
+  <div id="statusView" style="display:none;"></div>
+
+  <footer>
+    <button class="reset-btn" id="resetBtn">Reset to sample close</button>
+  </footer>
+</div>
+
+<script>
+  const STORAGE_KEY = 'monthEndCloseTracker.v1';
+
+  const SAMPLE_TASKS = [
+    { id: 't1', name: 'Reconcile all bank accounts', owner: 'Treasury', status: 'done', note: '' },
+    { id: 't2', name: 'Post payroll accrual', owner: 'HR / Payroll', status: 'done', note: '' },
+    { id: 't3', name: 'Reconcile AP subledger to GL', owner: 'AP Team', status: 'done', note: '' },
+    { id: 't4', name: 'Reconcile AR subledger to GL', owner: 'AR Team', status: 'in_progress', note: '' },
+    { id: 't5', name: 'Post depreciation & amortization', owner: 'Fixed Assets', status: 'done', note: '' },
+    { id: 't6', name: 'Review and post other accrual entries', owner: 'Controller', status: 'in_progress', note: '' },
+    { id: 't7', name: 'Reconcile intercompany balances', owner: 'Consolidations', status: 'blocked', note: 'Waiting on EU entity trial balance' },
+    { id: 't8', name: 'Post revenue recognition adjustments', owner: 'Revenue Accounting', status: 'done', note: '' },
+    { id: 't9', name: 'Review fixed asset additions/disposals', owner: 'Fixed Assets', status: 'done', note: '' },
+    { id: 't10', name: 'Prepare flux / variance analysis', owner: 'FP&A', status: 'in_progress', note: '' },
+    { id: 't11', name: 'Reconcile prepaid expenses', owner: 'Controller', status: 'blocked', note: 'Missing invoice detail from IT vendor' },
+    { id: 't12', name: 'Finalize trial balance & lock GL', owner: 'Controller', status: 'blocked', note: 'Cannot lock until all subledgers reconcile' },
+    { id: 't13', name: 'Reconcile credit card statements', owner: 'AP Team', status: 'done', note: '' },
+    { id: 't14', name: 'Calculate debt covenants', owner: 'Treasury', status: 'blocked', note: 'Waiting on updated debt schedule from lender' },
+    { id: 't15', name: 'Prepare variance analysis commentary', owner: 'FP&A', status: 'in_progress', note: '' },
+  ];
+
+  const SAMPLE_PERIOD = 'June 2026 Close';
+
+  const STATUS_LABEL = { done: 'Done', in_progress: 'In progress', blocked: 'Blocked' };
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) { /* fall through to sample */ }
+    return { period: SAMPLE_PERIOD, tasks: SAMPLE_TASKS.map(t => ({ ...t })) };
+  }
+
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  let state = loadState();
+  let currentView = 'checklist';
+
+  // Only a direct user click on a status button changes a task's status.
+  // No code path here ever sets status to 'done' automatically.
+  function setStatus(taskId, newStatus) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    task.status = newStatus;
+    if (newStatus !== 'blocked') task.note = task.note; // note is preserved but only shown for blocked
+    saveState();
+    render();
+  }
+
+  function setNote(taskId, value) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    task.note = value;
+    saveState();
+  }
+
+  function renderChecklist() {
+    const el = document.getElementById('checklistView');
+    const rows = state.tasks.map(task => {
+      const statuses = ['done', 'in_progress', 'blocked'];
+      const btns = statuses.map(s => `
+        <button class="status-btn${task.status === s ? ' active' : ''}" data-status="${s}" data-task="${task.id}">
+          ${STATUS_LABEL[s]}
+        </button>
+      `).join('');
+      const noteField = task.status === 'blocked' ? `
+        <div class="note-field">
+          <label for="note-${task.id}">Why is this blocked?</label>
+          <input type="text" id="note-${task.id}" data-task="${task.id}" value="${escapeAttr(task.note || '')}" placeholder="e.g. waiting on data from another team">
+        </div>
+      ` : '';
+      return `
+        <div class="task-row">
+          <div class="task-top">
+            <div class="task-name">${escapeHtml(task.name)}</div>
+            <div class="task-owner">${escapeHtml(task.owner)}</div>
+          </div>
+          <div class="status-group">${btns}</div>
+          ${noteField}
+        </div>
+      `;
+    }).join('');
+
+    el.innerHTML = `<div class="card">${rows}</div>`;
+
+    el.querySelectorAll('.status-btn').forEach(btn => {
+      btn.addEventListener('click', () => setStatus(btn.dataset.task, btn.dataset.status));
+    });
+    el.querySelectorAll('.note-field input').forEach(input => {
+      input.addEventListener('input', () => setNote(input.dataset.task, input.value));
+    });
+  }
+
+  function renderStatus() {
+    const el = document.getElementById('statusView');
+    const total = state.tasks.length;
+    const doneCount = state.tasks.filter(t => t.status === 'done').length;
+    const inProgressCount = state.tasks.filter(t => t.status === 'in_progress').length;
+    const blockedCount = state.tasks.filter(t => t.status === 'blocked').length;
+    const pct = total === 0 ? 0 : Math.round((doneCount / total) * 100);
+    const allDone = total > 0 && doneCount === total;
+
+    const blockers = state.tasks.filter(t => t.status !== 'done');
+    const blockersHtml = blockers.length === 0
+      ? `<div class="empty-note">Nothing is blocking sign-off.</div>`
+      : blockers.map(t => `
+          <div class="block-item">
+            <div>
+              <div class="block-name">${escapeHtml(t.name)}</div>
+              <div class="block-owner">Chase: <strong>${escapeHtml(t.owner)}</strong></div>
+              ${t.status === 'blocked' && t.note ? `<div class="block-note">${escapeHtml(t.note)}</div>` : ''}
+            </div>
+            <div class="block-badge ${t.status}">${STATUS_LABEL[t.status]}</div>
+          </div>
+        `).join('');
+
+    const bannerClass = allDone ? 'ready' : 'locked';
+    const bannerIcon = allDone ? '&#9989;' : '&#128274;';
+    const bannerTitle = allDone ? 'Ready to sign off' : 'Sign-off locked';
+    const bannerSub = allDone
+      ? 'All close tasks are done.'
+      : `${total - doneCount} of ${total} task${total - doneCount === 1 ? '' : 's'} still need${total - doneCount === 1 ? 's' : ''} to be marked Done.`;
+
+    el.innerHTML = `
+      <div class="signoff-banner ${bannerClass}">
+        <div class="signoff-icon">${bannerIcon}</div>
+        <div>
+          <div class="signoff-title">${bannerTitle}</div>
+          <div class="signoff-sub">${bannerSub}</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stat-row">
+          <div class="big">${doneCount} / ${total} done</div>
+          <div>${pct}%</div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${pct}%;"></div>
+        </div>
+        <div class="chip-row">
+          <div class="chip done">${doneCount} Done</div>
+          <div class="chip in_progress">${inProgressCount} In progress</div>
+          <div class="chip blocked">${blockedCount} Blocked</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Blocking sign-off</h2>
+        ${blockersHtml}
+      </div>
+    `;
+  }
+
+  function render() {
+    document.getElementById('periodLabel').textContent = state.period;
+    if (currentView === 'checklist') {
+      document.getElementById('checklistView').style.display = '';
+      document.getElementById('statusView').style.display = 'none';
+      renderChecklist();
+    } else {
+      document.getElementById('checklistView').style.display = 'none';
+      document.getElementById('statusView').style.display = '';
+      renderStatus();
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+  function escapeAttr(str) { return escapeHtml(str); }
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentView = btn.dataset.view;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+      render();
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    if (!confirm('Reset all tasks back to the sample close data? This will overwrite your current progress.')) return;
+    state = { period: SAMPLE_PERIOD, tasks: SAMPLE_TASKS.map(t => ({ ...t })) };
+    saveState();
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>
